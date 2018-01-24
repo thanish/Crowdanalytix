@@ -220,65 +220,6 @@ stack_test_fold = cbind(stack_test_fold_GBM, stack_test_fold_RF, stack_test_fold
 ##############################################################################
 #Used the stacked data to create model
 ##############################################################################
-#GBM 
-stack_train_fold_h2o = as.h2o(stack_train_fold)
-x_indep = setdiff(colnames(stack_train_fold_h2o), c('outcome'))
-y_dep = 'outcome'
-
-GBM.h2o.model = h2o.gbm(x = x_indep, y = y_dep, training_frame = stack_train_fold_h2o,
-                        ntrees = 100, max_depth = 2, learn_rate = 0.05,
-                        #col_sample_rate = 0.9, sample_rate = 0.9,
-                        nfolds = 5, fold_assignment = 'Stratified', 
-                        seed = 100)
-
-##########################
-#XGB
-library(dummies)
-fac_columns = colnames(stack_train_fold)[sapply(stack_train_fold, FUN = class) == 'factor']
-
-stack_train_fold[,(fac_columns):= lapply(.SD, as.numeric), .SDcols = fac_columns]
-
-stack_train_fold[, outcome := outcome - 1]
-
-x_indep = setdiff(colnames(stack_train_fold), 'outcome')
-y_dep = 'outcome'
-
-dtrain_prod = xgb.DMatrix(data = as.matrix(stack_train_fold[,x_indep, with = F]), label = stack_train_fold$outcome)
-dtest_prod = xgb.DMatrix(data = as.matrix(stack_test_fold[,x_indep, with = F]))
-
-set.seed(100)
-xgb.model.cv = xgb.cv(data = dtrain_prod, 
-                      stratified = T,
-                      nfold = 5, 
-                      nrounds = 500,
-                      eta = 0.1,
-                      max_depth = 6,
-                      objective = 'multi:softprob',
-                      num_class =3,
-                      subsample = 0.8,
-                      colsample_bytree = 0.9,
-                      metrics = 'mlogloss',
-                      early_stopping_rounds = 10,
-                      min_child_weight = 1, 
-                      nthread = 8
-)
-
-set.seed(100)
-xgb.model.prod = xgboost(data = dtrain_prod, 
-                         nrounds = xgb.model.cv$best_iteration ,
-                         eta = xgb.model.cv$params$eta,
-                         max_depth = xgb.model.cv$params$max_depth,
-                         objective = 'multi:softprob',
-                         num_class = 3,
-                         subsample = 0.8,
-                         colsample_bytree = 0.9,
-                         eval_metric = 'mlogloss',
-                         min_child_weight = 1
-                         #,early_stopping_rounds = 10
-)
-xgb.importance(model = xgb.model.prod, feature_names = x_indep)
-
-##############################################################################
 x_indep = setdiff(colnames(stack_train_fold), c('outcome'))
 y_dep = 'outcome'
 
